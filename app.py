@@ -1,17 +1,16 @@
 import os
 import secrets
-from datetime import datetime, timezone
 from pathlib import Path
 
-from database import Database
+from database import db, close_db
+from constants import RAID_TYPES, STATUSES, PRIORITIES
+from routes.projects import bp as projects_bp
+from routes.raid import bp as raid_bp
+from routes.changelog import bp as changelog_bp
+from routes.api import bp as api_bp
 
-from flask import Flask, abort, flash, g, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, abort, render_template, request, session
 from werkzeug.exceptions import HTTPException
-
-
-RAID_TYPES = ('Risk', 'Assumption', 'Issue', 'Dependency')
-STATUSES = ('Open', 'In progress', 'Closed')
-PRIORITIES = ('Low', 'Medium', 'High')
 
 
 def create_app(test_config=None):
@@ -42,16 +41,7 @@ def create_app(test_config=None):
                 pass
         app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or key_file.read_text()
 
-    def db():
-        if 'db' not in g:
-            g.db = Database(app.config)
-        return g.db
-
-    @app.teardown_appcontext
-    def close_db(error=None):
-        connection = g.pop('db', None)
-        if connection is not None:
-            connection.close()
+    app.teardown_appcontext(close_db)
 
     @app.cli.command('init-db')
     def init_db():
@@ -74,177 +64,6 @@ def create_app(test_config=None):
     def template_globals():
         return dict(raid_types=RAID_TYPES, statuses=STATUSES, priorities=PRIORITIES)
 
-    def project_or_404(project_id):
-        project = db().execute('SELECT * FROM projects WHERE id = ?', (project_id,)).fetchone()
-        if project is None:
-            abort(404)
-        return project
-
-    def field(name, required=False, limit=10000):
-        value = request.form.get(name, '').strip()
-        if (required and not value) or len(value) > limit:
-            abort(400, f'{name.replace("_", " ").title()} is required and must be at most {limit} characters.'
-                  if required else f'{name.title()} must be at most {limit} characters.')
-        return value
-
-    @app.get('/')
-    def index():
-        projects = db().execute('''
-            SELECT p.*,
-                (SELECT COUNT(*) FROM raid_items r WHERE r.project_id=p.id) AS raid_count,
-                (SELECT COUNT(*) FROM changelog_entries c WHERE c.project_id=p.id) AS change_count
-            FROM projects p ORDER BY p.id DESC
-        ''').fetchall()
-        return render_template('index.html', projects=projects)
-
-    @app.route('/projects/new', methods=['GET', 'POST'])
-    def create_project():
-        if request.method == 'POST':
-            project_id = db().create_project(
-                                  (field('name', True, 200), field('description')))
-            db().commit()
-            flash('Project created.')
-            return redirect(url_for('project_detail', project_id=project_id))
-        return render_template('project_form.html', project=None)
-
-    @app.get('/projects/<int:project_id>')
-    def project_detail(project_id):
-        project = project_or_404(project_id)
-        items = db().execute('SELECT * FROM raid_items WHERE project_id=? ORDER BY id DESC', (project_id,)).fetchall()
-        changes = db().execute('SELECT * FROM changelog_entries WHERE project_id=? ORDER BY id DESC', (project_id,)).fetchall()
-        return render_template('project.html', project=project, items=items, changes=changes)
-
-    @app.route('/projects/<int:project_id>/edit', methods=['GET', 'POST'])
-    def edit_project(project_id):
-        project = project_or_404(project_id)
-        if request.method == 'POST':
-            db().execute('UPDATE projects SET name=?, description=? WHERE id=?',
-                         (field('name', True, 200), field('description'), project_id))
-            db().commit()
-            flash('Project updated.')
-            return redirect(url_for('project_detail', project_id=project_id))
-        return render_template('project_form.html', project=project)
-
-    @app.post('/projects/<int:project_id>/delete')
-    def delete_project(project_id):
-        project_or_404(project_id)
-        db().execute('DELETE FROM projects WHERE id=?', (project_id,))
-        db().commit()
-        flash('Project and its records deleted.')
-        return redirect(url_for('index'))
-
-    @app.route('/projects/<int:project_id>/raid/new', methods=['GET', 'POST'])
-    @app.route('/projects/<int:project_id>/raid/<int:item_id>/edit', methods=['GET', 'POST'])
-    def raid_form(project_id, item_id=None):
-        project = project_or_404(project_id)
-        item = None
-        if item_id is not None:
-            item = db().execute('SELECT * FROM raid_items WHERE id=? AND project_id=?', (item_id, project_id)).fetchone()
-            if item is None:
-                abort(404)
-        if request.method == 'POST':
-            kind, status, priority = field('kind'), field('status'), field('priority')
-            if kind not in RAID_TYPES or status not in STATUSES or priority not in PRIORITIES:
-                abort(400, 'Select a valid type, status, and priority.')
-            values = (kind, field('title', True, 200), field('description'), field('owner', limit=200), status, priority)
-            if item is None:
-                db().execute('INSERT INTO raid_items(kind,title,description,owner,status,priority,project_id) VALUES (?,?,?,?,?,?,?)', values + (project_id,))
-            else:
-                db().execute('UPDATE raid_items SET kind=?,title=?,description=?,owner=?,status=?,priority=? WHERE id=? AND project_id=?', values + (item_id, project_id))
-            db().commit()
-            flash('RAID record saved.')
-            return redirect(url_for('project_detail', project_id=project_id))
-        return render_template('raid_form.html', project=project, item=item)
-
-    @app.route('/projects/<int:project_id>/changelog/new', methods=['GET', 'POST'])
-    @app.route('/projects/<int:project_id>/changelog/<int:entry_id>/edit', methods=['GET', 'POST'])
-    def changelog_form(project_id, entry_id=None):
-        project = project_or_404(project_id)
-        entry = None
-        if entry_id is not None:
-            entry = db().execute('SELECT * FROM changelog_entries WHERE id=? AND project_id=?', (entry_id, project_id)).fetchone()
-            if entry is None:
-                abort(404)
-        if request.method == 'POST':
-            values = (field('title', True, 200), field('body'))
-            if entry is None:
-                db().execute('INSERT INTO changelog_entries(title,body,project_id) VALUES (?,?,?)', values + (project_id,))
-            else:
-                db().execute('UPDATE changelog_entries SET title=?,body=? WHERE id=? AND project_id=?', values + (entry_id, project_id))
-            db().commit()
-            flash('Changelog entry saved.')
-            return redirect(url_for('project_detail', project_id=project_id))
-        return render_template('changelog_form.html', project=project, entry=entry)
-
-    @app.post('/projects/<int:project_id>/<record_type>/<int:record_id>/delete')
-    def delete_record(project_id, record_type, record_id):
-        project_or_404(project_id)
-        tables = {'raid': 'raid_items', 'changelog': 'changelog_entries'}
-        if record_type not in tables:
-            abort(404)
-        cursor = db().execute(f'DELETE FROM {tables[record_type]} WHERE id=? AND project_id=?', (record_id, project_id))
-        if not cursor.rowcount:
-            abort(404)
-        db().commit()
-        flash('Record deleted.')
-        return redirect(url_for('project_detail', project_id=project_id))
-
-    def api_record(record):
-        data = dict(record)
-        created = data.get('created_at')
-        if created is not None:
-            if isinstance(created, str):
-                created = datetime.fromisoformat(created)
-            if created.tzinfo is None:
-                created = created.replace(tzinfo=timezone.utc)
-            data['created_at'] = created.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
-        return data
-
-    @app.get('/api/openapi.json')
-    def api_spec():
-        return app.send_static_file('openapi.json')
-
-    @app.get('/api/docs')
-    def api_docs():
-        return render_template('api_docs.html')
-
-    @app.get('/api/projects')
-    def api_projects():
-        projects = db().execute('SELECT * FROM projects ORDER BY id DESC').fetchall()
-        return jsonify(projects=[api_record(project) for project in projects])
-
-    @app.get('/api/projects/<int:project_id>')
-    def api_project(project_id):
-        return jsonify(project=api_record(project_or_404(project_id)))
-
-    @app.get('/api/projects/<int:project_id>/raid')
-    def api_raid_items(project_id):
-        project_or_404(project_id)
-        items = db().execute('SELECT * FROM raid_items WHERE project_id=? ORDER BY id DESC', (project_id,)).fetchall()
-        return jsonify(raid_items=[api_record(item) for item in items])
-
-    @app.get('/api/projects/<int:project_id>/raid/<int:item_id>')
-    def api_raid_item(project_id, item_id):
-        project_or_404(project_id)
-        item = db().execute('SELECT * FROM raid_items WHERE project_id=? AND id=?', (project_id, item_id)).fetchone()
-        if item is None:
-            abort(404)
-        return jsonify(raid_item=api_record(item))
-
-    @app.get('/api/projects/<int:project_id>/changelog')
-    def api_changelog_entries(project_id):
-        project_or_404(project_id)
-        entries = db().execute('SELECT * FROM changelog_entries WHERE project_id=? ORDER BY id DESC', (project_id,)).fetchall()
-        return jsonify(changelog_entries=[api_record(entry) for entry in entries])
-
-    @app.get('/api/projects/<int:project_id>/changelog/<int:entry_id>')
-    def api_changelog_entry(project_id, entry_id):
-        project_or_404(project_id)
-        entry = db().execute('SELECT * FROM changelog_entries WHERE project_id=? AND id=?', (project_id, entry_id)).fetchone()
-        if entry is None:
-            abort(404)
-        return jsonify(changelog_entry=api_record(entry))
-
     @app.errorhandler(HTTPException)
     def error_page(error):
         if request.path == '/api' or request.path.startswith('/api/'):
@@ -253,6 +72,9 @@ def create_app(test_config=None):
             response.content_type = 'application/json'
             return response
         return render_template('error.html', error=error), error.code
+
+    for blueprint in (projects_bp, raid_bp, changelog_bp, api_bp):
+        app.register_blueprint(blueprint)
 
     return app
 

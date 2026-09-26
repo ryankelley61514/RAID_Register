@@ -89,3 +89,21 @@ class Database:
 
     def close(self):
         self.connection.close()
+
+
+def db():
+    """Return the database connection for the current Flask context."""
+    from flask import current_app, g
+
+    if 'db' not in g:
+        g.db = Database(current_app.config)
+    return g.db
+
+
+def close_db(error=None):
+    """Close the connection and discard uncommitted work."""
+    from flask import g
+
+    connection = g.pop('db', None)
+    if connection is not None:
+        connection.close()

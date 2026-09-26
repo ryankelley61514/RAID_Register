@@ -82,7 +82,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Requested record.",
+            "description": "Project with all associated RAID records and changelog entries.",
             "content": {
               "application/json": {
                 "schema": {
@@ -92,7 +92,7 @@
                   ],
                   "properties": {
                     "project": {
-                      "$ref": "#/components/schemas/Project"
+                      "$ref": "#/components/schemas/ProjectDetail"
                     }
                   }
                 }
@@ -483,6 +483,52 @@
                 "type": "string",
                 "example": "The requested URL was not found on the server."
               }
+            }
+          }
+        }
+      },
+      "ProjectDetail": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "created_at",
+          "raid_items",
+          "changelog_entries"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "Website launch"
+          },
+          "description": {
+            "type": "string",
+            "example": "Launch the new website."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC creation timestamp.",
+            "example": "2026-09-25T12:00:00Z"
+          },
+          "raid_items": {
+            "type": "array",
+            "description": "All associated records, newest ID first. Empty when no records exist.",
+            "items": {
+              "$ref": "#/components/schemas/RaidItem"
+            }
+          },
+          "changelog_entries": {
+            "type": "array",
+            "description": "All associated records, newest ID first. Empty when no records exist.",
+            "items": {
+              "$ref": "#/components/schemas/ChangelogEntry"
             }
           }
         }

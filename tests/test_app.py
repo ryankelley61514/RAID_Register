@@ -127,17 +127,37 @@ class ProjectAppTests(unittest.TestCase):
         data = response.get_json()['projects'][0]
         self.assertEqual(data['name'], 'API project')
         self.assertRegex(data['created_at'], r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$')
-        self.assertEqual(self.client.get(api).get_json()['project'], data)
+        expanded = self.client.get(api).get_json()['project']
+        self.assertEqual({key: expanded[key] for key in data}, data)
         for path, collection, singular in [('raid', 'raid_items', 'raid_item'),
                                            ('changelog', 'changelog_entries', 'changelog_entry')]:
             records = self.client.get(api + '/' + path).get_json()[collection]
             self.assertEqual(len(records), 1)
+            self.assertEqual(expanded[collection], records)
             detail = self.client.get(api + '/' + path + '/' + str(records[0]['id']))
             self.assertEqual(detail.get_json()[singular], records[0])
             other = self.create_project('Other')
             wrong_parent = self.client.get('/api' + other + '/' + path + '/' + str(records[0]['id']))
             self.assertEqual(wrong_parent.status_code, 404)
             self.assertEqual(wrong_parent.get_json()['error']['code'], 404)
+
+    def test_project_api_includes_only_its_children(self):
+        first = self.create_project('First')
+        second = self.create_project('Second')
+        empty = self.client.get('/api' + second).get_json()['project']
+        self.assertEqual(empty['raid_items'], [])
+        self.assertEqual(empty['changelog_entries'], [])
+        for project in (first, second):
+            for title in ('Earlier', 'Later'):
+                self.post(project + '/raid/new', kind='Risk', title=title, status='Open', priority='High')
+                self.post(project + '/changelog/new', title=title)
+        for project in (first, second):
+            result = self.client.get('/api' + project).get_json()['project']
+            for collection in ('raid_items', 'changelog_entries'):
+                self.assertEqual([item['title'] for item in result[collection]], ['Later', 'Earlier'])
+                for item in result[collection]:
+                    self.assertEqual(item['project_id'], result['id'])
+                    self.assertTrue(item['created_at'].endswith('Z'))
 
     def test_json_api_errors_and_read_only_methods(self):
         for path in ('/api/missing', '/api/projects/999', '/api/projects/999/raid', '/api/projects/999/changelog'):

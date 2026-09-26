@@ -4,6 +4,8 @@ A Flask application for tracking projects with multiple RAID records and changel
 
 ## Run locally (PowerShell)
 
+Routes are organized as Flask Blueprints in `routes/projects.py`, `routes/raid.py`, `routes/changelog.py`, and `routes/api.py` (including Swagger documentation). Shared lookups and form validation live in `routes/helpers.py`; database context helpers live in `database.py`, and RAID options in `constants.py`. `app.py` configures the application, registers the Blueprints, and maintains common CSRF protection, error handling, and CLI setup. Public URLs are unchanged; internal endpoint names use Blueprint prefixes, such as `projects.project_detail` and `api.api_docs`.
+
 ```powershell
 python -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt
@@ -86,6 +88,8 @@ These read-only endpoints use the configured database (SQLite or SQL Server):
 | `/api/projects/<project_id>/raid/<item_id>` | `raid_item` (object) |
 | `/api/projects/<project_id>/changelog` | `changelog_entries` (array) |
 | `/api/projects/<project_id>/changelog/<entry_id>` | `changelog_entry` (object) |
+
+The project detail endpoint `/api/projects/<project_id>` includes `raid_items` and `changelog_entries` arrays inside the `project` object. These contain all associated records, ordered by newest ID first, or empty arrays when none exist. The project list remains a summary without nested records.
 
 Records include all their stored fields. Collections return newest IDs first, with empty arrays when there are no records. Timestamps use UTC ISO 8601, such as `2026-09-25T12:00:00Z`. Missing projects or records return HTTP 404; unsupported methods return HTTP 405. API HTTP errors use `{"error": {"code": 404, "message": "..."}}`. Child records must belong to the project in the URL.
 
