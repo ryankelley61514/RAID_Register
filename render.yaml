@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: project-ledger-demo
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements-demo.txt
+    startCommand: python -m flask --app app init-db && gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 4 'app:create_app()'
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: DATABASE_BACKEND
+        value: sqlite
+      - key: SQLITE_DATABASE
+        value: demo.sqlite
+      - key: SECRET_KEY
+        generateValue: true

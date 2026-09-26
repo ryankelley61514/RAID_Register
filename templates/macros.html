@@ -1,0 +1,4 @@
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">{% endmacro %}
+{% macro delete_button(action, message='Delete this record?') %}
+<form class="inline" method="post" action="{{ action }}" onsubmit="return confirm({{ message|tojson|forceescape }})">{{ csrf() }}<button class="danger" type="submit">Delete</button></form>
+{% endmacro %}
