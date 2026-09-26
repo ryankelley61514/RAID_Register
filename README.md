@@ -1,4 +1,4 @@
-# Project Ledger
+# Project RAID Register
 
 A Flask application for tracking projects with multiple RAID records and changelog entries. Projects, RAID records, and changelog entries can be created, viewed, edited, and deleted through the web interface.
 

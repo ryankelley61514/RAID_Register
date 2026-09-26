@@ -1,5 +1,5 @@
 {% extends 'base.html' %}{% from 'macros.html' import delete_button with context %}
-{% block title %}{{ project.name }} · Project Ledger{% endblock %}
+{% block title %}{{ project.name }} · Project RAID Register{% endblock %}
 {% block content %}
 <a class="back" href="{{ url_for('index') }}">← All projects</a><div class="heading"><div><p class="eyebrow">PROJECT {{ '%02d'|format(project.id) }}</p><h1>{{ project.name }}</h1><p class="prose muted">{{ project.description }}</p></div><div class="actions"><a class="button secondary" href="{{ url_for('edit_project', project_id=project.id) }}">Edit project</a>{{ delete_button(url_for('delete_project', project_id=project.id), 'Delete this project and all its RAID records and changelog entries?') }}</div></div>
 <section><div class="heading"><div><h2>RAID register <span class="badge">{{ items|length }}</span></h2><p class="muted">Risks, assumptions, issues, and dependencies.</p></div><a class="button" href="{{ url_for('raid_form', project_id=project.id) }}">+ Add record</a></div>
