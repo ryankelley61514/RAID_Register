@@ -70,7 +70,33 @@ Run `flask --app app init-db` using the virtual environment after selecting an e
 
 A local session secret is generated in `instance/secret.key`; you can override it with the `SECRET_KEY` environment variable.
 
-## Data model
+## JSON API
+
+Interactive Swagger UI is available at `/api/docs` (locally, http://127.0.0.1:5000/api/docs). Expand an endpoint, click **Try it out**, enter any required IDs, and click **Execute**. Requests use the same host and selected database as the app.
+
+The OpenAPI 3.0 specification is available at `/api/openapi.json` and maintained in `static/openapi.json`. Update it when API fields or routes change. Swagger UI uses version-pinned CDN assets (5.17.14), so interactive documentation requires browser access to unpkg.com; the JSON specification is served locally. Integration follows the [Swagger UI standalone installation guide](https://swagger.io/docs/open-source-tools/swagger-ui/usage/installation/).
+
+These read-only endpoints use the configured database (SQLite or SQL Server):
+
+| GET endpoint | JSON response key |
+| --- | --- |
+| `/api/projects` | `projects` (array) |
+| `/api/projects/<project_id>` | `project` (object) |
+| `/api/projects/<project_id>/raid` | `raid_items` (array) |
+| `/api/projects/<project_id>/raid/<item_id>` | `raid_item` (object) |
+| `/api/projects/<project_id>/changelog` | `changelog_entries` (array) |
+| `/api/projects/<project_id>/changelog/<entry_id>` | `changelog_entry` (object) |
+
+Records include all their stored fields. Collections return newest IDs first, with empty arrays when there are no records. Timestamps use UTC ISO 8601, such as `2026-09-25T12:00:00Z`. Missing projects or records return HTTP 404; unsupported methods return HTTP 405. API HTTP errors use `{"error": {"code": 404, "message": "..."}}`. Child records must belong to the project in the URL.
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:5000/api/projects
+Invoke-RestMethod http://127.0.0.1:5000/api/projects/1/raid
+```
+
+The API has no authentication, like the current web interface, and exposes all project data to visitors. Changes continue to use the web forms.
+
+## Record fields
 
 - `projects`: name, description, creation timestamp.
 - `raid_items`: project, type (Risk, Assumption, Issue, Dependency), title, description/response plan, owner, status, priority, creation timestamp.

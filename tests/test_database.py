@@ -24,7 +24,7 @@ class DatabaseTests(unittest.TestCase):
 
     @patch('pyodbc.connect')
     def test_failure_closes_cursor_and_schema_failure_rolls_back(self, connect):
-        database = Database(create_app({'SECRET_KEY': 'test'}).config)
+        database = Database(create_app({'SECRET_KEY': 'test', 'DATABASE_BACKEND': 'sqlserver'}).config)
         cursor = connect.return_value.cursor.return_value
         cursor.execute.side_effect = RuntimeError('SQL failed')
         with self.assertRaises(RuntimeError):

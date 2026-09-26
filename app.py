@@ -1,10 +1,12 @@
 import os
 import secrets
+from datetime import datetime, timezone
 from pathlib import Path
 
 from database import Database
 
-from flask import Flask, abort, flash, g, redirect, render_template, request, session, url_for
+from flask import Flask, abort, flash, g, jsonify, redirect, render_template, request, session, url_for
+from werkzeug.exceptions import HTTPException
 
 
 RAID_TYPES = ('Risk', 'Assumption', 'Issue', 'Dependency')
@@ -59,6 +61,8 @@ def create_app(test_config=None):
 
     @app.before_request
     def csrf_protection():
+        if request.path == '/api' or request.path.startswith('/api/'):
+            return  # API routes are read-only and do not use form sessions.
         if 'csrf_token' not in session:
             session['csrf_token'] = secrets.token_hex(32)
         if request.method == 'POST' and not secrets.compare_digest(
@@ -185,9 +189,69 @@ def create_app(test_config=None):
         flash('Record deleted.')
         return redirect(url_for('project_detail', project_id=project_id))
 
-    @app.errorhandler(400)
-    @app.errorhandler(404)
+    def api_record(record):
+        data = dict(record)
+        created = data.get('created_at')
+        if created is not None:
+            if isinstance(created, str):
+                created = datetime.fromisoformat(created)
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
+            data['created_at'] = created.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
+        return data
+
+    @app.get('/api/openapi.json')
+    def api_spec():
+        return app.send_static_file('openapi.json')
+
+    @app.get('/api/docs')
+    def api_docs():
+        return render_template('api_docs.html')
+
+    @app.get('/api/projects')
+    def api_projects():
+        projects = db().execute('SELECT * FROM projects ORDER BY id DESC').fetchall()
+        return jsonify(projects=[api_record(project) for project in projects])
+
+    @app.get('/api/projects/<int:project_id>')
+    def api_project(project_id):
+        return jsonify(project=api_record(project_or_404(project_id)))
+
+    @app.get('/api/projects/<int:project_id>/raid')
+    def api_raid_items(project_id):
+        project_or_404(project_id)
+        items = db().execute('SELECT * FROM raid_items WHERE project_id=? ORDER BY id DESC', (project_id,)).fetchall()
+        return jsonify(raid_items=[api_record(item) for item in items])
+
+    @app.get('/api/projects/<int:project_id>/raid/<int:item_id>')
+    def api_raid_item(project_id, item_id):
+        project_or_404(project_id)
+        item = db().execute('SELECT * FROM raid_items WHERE project_id=? AND id=?', (project_id, item_id)).fetchone()
+        if item is None:
+            abort(404)
+        return jsonify(raid_item=api_record(item))
+
+    @app.get('/api/projects/<int:project_id>/changelog')
+    def api_changelog_entries(project_id):
+        project_or_404(project_id)
+        entries = db().execute('SELECT * FROM changelog_entries WHERE project_id=? ORDER BY id DESC', (project_id,)).fetchall()
+        return jsonify(changelog_entries=[api_record(entry) for entry in entries])
+
+    @app.get('/api/projects/<int:project_id>/changelog/<int:entry_id>')
+    def api_changelog_entry(project_id, entry_id):
+        project_or_404(project_id)
+        entry = db().execute('SELECT * FROM changelog_entries WHERE project_id=? AND id=?', (project_id, entry_id)).fetchone()
+        if entry is None:
+            abort(404)
+        return jsonify(changelog_entry=api_record(entry))
+
+    @app.errorhandler(HTTPException)
     def error_page(error):
+        if request.path == '/api' or request.path.startswith('/api/'):
+            response = error.get_response()
+            response.data = app.json.dumps({'error': {'code': error.code, 'message': error.description}})
+            response.content_type = 'application/json'
+            return response
         return render_template('error.html', error=error), error.code
 
     return app

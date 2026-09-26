@@ -113,6 +113,78 @@ class ProjectAppTests(unittest.TestCase):
         self.assertIn(b'&lt;script&gt;', page.data)
         self.assertNotIn(b'<script>', page.data)
 
+    def test_json_api(self):
+        self.assertEqual(self.client.get('/api/projects').get_json(), {'projects': []})
+        project = self.create_project('API project')
+        api = '/api' + project
+        self.assertEqual(self.client.get(api + '/raid').get_json(), {'raid_items': []})
+        self.assertEqual(self.client.get(api + '/changelog').get_json(), {'changelog_entries': []})
+        self.post(project + '/raid/new', kind='Risk', title='Delivery', status='Open', priority='High')
+        self.post(project + '/changelog/new', title='Kickoff', body='Started')
+        response = self.client.get('/api/projects')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.is_json)
+        data = response.get_json()['projects'][0]
+        self.assertEqual(data['name'], 'API project')
+        self.assertRegex(data['created_at'], r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$')
+        self.assertEqual(self.client.get(api).get_json()['project'], data)
+        for path, collection, singular in [('raid', 'raid_items', 'raid_item'),
+                                           ('changelog', 'changelog_entries', 'changelog_entry')]:
+            records = self.client.get(api + '/' + path).get_json()[collection]
+            self.assertEqual(len(records), 1)
+            detail = self.client.get(api + '/' + path + '/' + str(records[0]['id']))
+            self.assertEqual(detail.get_json()[singular], records[0])
+            other = self.create_project('Other')
+            wrong_parent = self.client.get('/api' + other + '/' + path + '/' + str(records[0]['id']))
+            self.assertEqual(wrong_parent.status_code, 404)
+            self.assertEqual(wrong_parent.get_json()['error']['code'], 404)
+
+    def test_json_api_errors_and_read_only_methods(self):
+        for path in ('/api/missing', '/api/projects/999', '/api/projects/999/raid', '/api/projects/999/changelog'):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 404)
+            self.assertEqual(response.get_json()['error']['code'], 404)
+        for method in ('post', 'put', 'patch', 'delete'):
+            response = getattr(self.client, method)('/api/projects')
+            self.assertEqual(response.status_code, 405)
+            self.assertEqual(response.get_json()['error']['code'], 405)
+            self.assertIn('GET', response.headers['Allow'])
+
+    def test_swagger_documentation_matches_api(self):
+        response = self.client.get('/api/openapi.json')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.is_json)
+        spec = response.get_json()
+        response.close()
+        self.assertEqual(spec['openapi'], '3.0.3')
+        routes = {re.sub(r'<int:(\w+)>', r'{\1}', rule.rule)
+                  for rule in self.app.url_map.iter_rules()
+                  if rule.rule.startswith('/api/projects')}
+        self.assertEqual(set(spec['paths']), routes)
+        project = self.create_project('Documentation test')
+        self.post(project + '/raid/new', kind='Risk', title='Schedule', status='Open', priority='High')
+        self.post(project + '/changelog/new', title='Started')
+        for path, operations in spec['paths'].items():
+            url = path.replace('{project_id}', project.rsplit('/', 1)[-1]).replace('{item_id}', '1').replace('{entry_id}', '1')
+            result = self.client.get(url)
+            self.assertEqual(result.status_code, 200)
+            payload = result.get_json()
+            schema = operations['get']['responses']['200']['content']['application/json']['schema']
+            self.assertEqual(set(schema['required']), set(payload))
+            for key, wrapper in schema['properties'].items():
+                records = payload[key] if wrapper.get('type') == 'array' else [payload[key]]
+                reference = wrapper['items'] if wrapper.get('type') == 'array' else wrapper
+                fields = spec['components']['schemas'][reference['$ref'].rsplit('/', 1)[-1]]
+                for record in records:
+                    self.assertEqual(set(fields['required']), set(record))
+                    for field, definition in fields['properties'].items():
+                        if 'enum' in definition:
+                            self.assertIn(record[field], definition['enum'])
+        docs = self.client.get('/api/docs')
+        self.assertEqual(docs.status_code, 200)
+        self.assertIn(b'SwaggerUIBundle', docs.data)
+        self.assertIn(b'/api/openapi.json', docs.data)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,0 +1,514 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Project Ledger API",
+    "version": "1.0.0",
+    "description": "Read-only API for projects, RAID records, and changelog entries. No authentication is required. All visitors can read all records. Collections are unpaginated. Try it out sends requests to this app and its currently configured database."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Current application host"
+    }
+  ],
+  "security": [],
+  "tags": [
+    {
+      "name": "Projects"
+    },
+    {
+      "name": "RAID"
+    },
+    {
+      "name": "Changelog"
+    }
+  ],
+  "paths": {
+    "/api/projects": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "operationId": "listProjects",
+        "summary": "List projects",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Records ordered by descending ID; empty collections return an empty array.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "projects"
+                  ],
+                  "properties": {
+                    "projects": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Project"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          }
+        }
+      }
+    },
+    "/api/projects/{project_id}": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "operationId": "getProject",
+        "summary": "Get project",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the owning project.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Requested record.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "project"
+                  ],
+                  "properties": {
+                    "project": {
+                      "$ref": "#/components/schemas/Project"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/projects/{project_id}/raid": {
+      "get": {
+        "tags": [
+          "RAID"
+        ],
+        "operationId": "listRaidItems",
+        "summary": "List raid items",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the owning project.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Records ordered by descending ID; empty collections return an empty array.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "raid_items"
+                  ],
+                  "properties": {
+                    "raid_items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RaidItem"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/projects/{project_id}/raid/{item_id}": {
+      "get": {
+        "tags": [
+          "RAID"
+        ],
+        "operationId": "getRaidItem",
+        "summary": "Get raid item",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the owning project.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 1
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "description": "ID of a record belonging to the specified project.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Requested record.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "raid_item"
+                  ],
+                  "properties": {
+                    "raid_item": {
+                      "$ref": "#/components/schemas/RaidItem"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/projects/{project_id}/changelog": {
+      "get": {
+        "tags": [
+          "Changelog"
+        ],
+        "operationId": "listChangelogEntries",
+        "summary": "List changelog entries",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the owning project.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Records ordered by descending ID; empty collections return an empty array.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "changelog_entries"
+                  ],
+                  "properties": {
+                    "changelog_entries": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ChangelogEntry"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/projects/{project_id}/changelog/{entry_id}": {
+      "get": {
+        "tags": [
+          "Changelog"
+        ],
+        "operationId": "getChangelogEntry",
+        "summary": "Get changelog entry",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the owning project.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 1
+          },
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "description": "ID of a record belonging to the specified project.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Requested record.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "changelog_entry"
+                  ],
+                  "properties": {
+                    "changelog_entry": {
+                      "$ref": "#/components/schemas/ChangelogEntry"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Project": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "Website launch"
+          },
+          "description": {
+            "type": "string",
+            "example": "Launch the new website."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC creation timestamp.",
+            "example": "2026-09-25T12:00:00Z"
+          }
+        }
+      },
+      "RaidItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "project_id",
+          "kind",
+          "title",
+          "description",
+          "owner",
+          "status",
+          "priority",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "project_id": {
+            "type": "integer",
+            "example": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "Risk",
+              "Assumption",
+              "Issue",
+              "Dependency"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "Vendor delivery delay"
+          },
+          "description": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Open",
+              "In progress",
+              "Closed"
+            ]
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "Low",
+              "Medium",
+              "High"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC creation timestamp.",
+            "example": "2026-09-25T12:00:00Z"
+          }
+        }
+      },
+      "ChangelogEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "project_id",
+          "title",
+          "body",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "project_id": {
+            "type": "integer",
+            "example": 1
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "Kickoff completed"
+          },
+          "body": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC creation timestamp.",
+            "example": "2026-09-25T12:00:00Z"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "integer",
+                "example": 404
+              },
+              "message": {
+                "type": "string",
+                "example": "The requested URL was not found on the server."
+              }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "NotFound": {
+        "description": "Project or record not found, or record belongs to a different project.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "MethodNotAllowed": {
+        "description": "Only GET, HEAD, and automatic OPTIONS are supported.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    }
+  }
+}
