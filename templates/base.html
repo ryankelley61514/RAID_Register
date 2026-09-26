@@ -1,7 +1,29 @@
 <!doctype html>
 <html lang="en" data-theme="dark">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{% block title %}Project RAID Register{% endblock %}</title><script src="{{ url_for('static', filename='theme.js') }}"></script><link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Project RAID Register{% endblock %}</title>
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
 <body>
-<header><nav><a class="brand" href="{{ url_for('projects.index') }}">◈ Project RAID Register</a><span>Projects · RAID · Changelog</span><a href="{{ url_for('api.api_docs') }}">API docs</a><button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to light mode">Light mode</button></nav></header>
-<main>{% for message in get_flashed_messages() %}<div class="notice" role="status">{{ message }}</div>{% endfor %}{% block content %}{% endblock %}</main>
-</body></html>
+    <header>
+        <nav>
+            <a class="brand" href="{{ url_for('projects.index') }}">◈ Project RAID Register</a>
+            <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to light mode">Light mode</button>
+        </nav>
+    </header>
+    <main>
+        {% for message in get_flashed_messages() %}
+            <div class="notice" role="status">
+                {{ message }}
+            </div>
+        {% endfor %}
+        {% block content %}{% endblock %}
+    </main>
+</body>
+
+</html>

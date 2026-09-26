@@ -4,6 +4,8 @@ A Flask application for tracking projects with multiple RAID records and changel
 
 ## Run locally (PowerShell)
 
+The project list supports case-insensitive name/description search and sorting by name or creation order. Each project's RAID register supports search across title, description, owner, type, status, and priority, with sorting by creation order, title, type, owner, status, or priority. Changelog search matches titles and entry text. Filters are stored in URL query parameters; RAID and changelog controls preserve each other's filters. Clear links reset the relevant list. Search treats special characters literally. The JSON API remains unfiltered. Filtering and sorting currently run in memory over the loaded lists, suitable for the app's unpaginated demo; larger datasets should use database-side filtering and pagination.
+
 Routes are organized as Flask Blueprints in `routes/projects.py`, `routes/raid.py`, `routes/changelog.py`, and `routes/api.py` (including Swagger documentation). Shared lookups and form validation live in `routes/helpers.py`; database context helpers live in `database.py`, and RAID options in `constants.py`. `app.py` configures the application, registers the Blueprints, and maintains common CSRF protection, error handling, and CLI setup. Public URLs are unchanged; internal endpoint names use Blueprint prefixes, such as `projects.project_detail` and `api.api_docs`.
 
 ```powershell

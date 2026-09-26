@@ -141,6 +141,40 @@ class ProjectAppTests(unittest.TestCase):
             self.assertEqual(wrong_parent.status_code, 404)
             self.assertEqual(wrong_parent.get_json()['error']['code'], 404)
 
+    def test_list_search_and_sort(self):
+        from flask import template_rendered
+        contexts = []
+        def capture(sender, template, context, **extra):
+            contexts.append(context)
+        template_rendered.connect(capture, self.app)
+        self.addCleanup(template_rendered.disconnect, capture, self.app)
+        first = self.create_project('Zulu')
+        self.create_project('Alpha')
+        response = self.client.get('/?sort=name')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([row['name'] for row in contexts[-1]['projects']], ['Alpha', 'Zulu'])
+        self.client.get('/?q=ZUL&sort=name_desc')
+        self.assertEqual([row['name'] for row in contexts[-1]['projects']], ['Zulu'])
+        self.client.get('/?q=%25')
+        self.assertEqual(contexts[-1]['projects'], [])
+        self.client.get('/?sort=invalid')
+        self.assertEqual(contexts[-1]['selected_sort'], 'newest')
+        for title, priority in [('Beta', 'High'), ('Alpha', 'Low')]:
+            self.post(first + '/raid/new', kind='Risk', title=title, description='Delivery', owner='Sam', status='Open', priority=priority)
+            self.post(first + '/changelog/new', title=title, body='Milestone')
+        response = self.client.get(first + '?raid_sort=priority&change_q=beta')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([row['priority'] for row in contexts[-1]['items']], ['High', 'Low'])
+        self.assertEqual([row['title'] for row in contexts[-1]['changes']], ['Beta'])
+        for query in ('sam', 'delivery', 'risk', 'open'):
+            self.client.get(first, query_string={'raid_q': query, 'raid_sort': 'title', 'change_q': 'milestone'})
+            self.assertEqual([row['title'] for row in contexts[-1]['items']], ['Alpha', 'Beta'])
+            self.assertEqual(len(contexts[-1]['changes']), 2)
+        response = self.client.get(first + '?raid_q=missing&change_q=missing')
+        self.assertIn(b'No matching RAID records', response.data)
+        self.assertIn(b'No matching changelog entries', response.data)
+        self.assertEqual(contexts[-1]['raid_total'], 2)
+
     def test_project_api_includes_only_its_children(self):
         first = self.create_project('First')
         second = self.create_project('Second')
