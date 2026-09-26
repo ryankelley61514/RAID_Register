@@ -113,6 +113,57 @@ class ProjectAppTests(unittest.TestCase):
         self.assertIn(b'&lt;script&gt;', page.data)
         self.assertNotIn(b'<script>', page.data)
 
+    def test_json_write_lifecycle(self):
+        created = self.client.post('/api/projects', json={'name': 'API write'})
+        self.assertEqual(created.status_code, 201)
+        project = created.headers['Location']
+        other = self.client.post('/api/projects', json={'name': 'Other'}).headers['Location']
+        changed = self.client.patch(project, json={'description': 'Changed'})
+        self.assertEqual(changed.status_code, 200)
+        self.assertEqual(changed.get_json()['project']['name'], 'API write')
+        for kind, key, payload in [('raid', 'raid_item', {'title': 'Risk', 'kind': 'Risk'}),
+                                   ('changelog', 'changelog_entry', {'title': 'Kickoff'})]:
+            result = self.client.post(project + '/' + kind, json=payload)
+            self.assertEqual(result.status_code, 201)
+            location = result.headers['Location']
+            record = result.get_json()[key]
+            self.assertEqual(self.client.get(location).get_json()[key], record)
+            wrong = other + '/' + kind + '/' + str(record['id'])
+            self.assertEqual(self.client.patch(wrong, json={'title': 'Wrong'}).status_code, 404)
+            self.assertEqual(self.client.delete(wrong).status_code, 404)
+            updated = self.client.patch(location, json={'title': 'Updated'})
+            self.assertEqual(updated.status_code, 200)
+            self.assertEqual(updated.get_json()[key]['title'], 'Updated')
+            self.assertEqual(updated.get_json()[key]['created_at'], record['created_at'])
+            deleted = self.client.delete(location)
+            self.assertEqual(deleted.status_code, 204)
+            self.assertEqual(deleted.data, b'')
+            self.assertEqual(self.client.get(location).status_code, 404)
+            self.assertEqual(self.client.post(project + '/' + kind, json=payload).status_code, 201)
+        self.assertEqual(self.client.delete(project).status_code, 204)
+        self.assertEqual(self.client.get(project).status_code, 404)
+        connection = Database(self.app.config)
+        try:
+            for table in ('raid_items', 'changelog_entries'):
+                self.assertEqual(connection.execute(f'SELECT COUNT(*) AS n FROM {table}').fetchone()['n'], 0)
+        finally:
+            connection.close()
+
+    def test_json_write_validation(self):
+        for payload in (None, [], {}, {'name': None}, {'name': ' '}, {'name': 5},
+                        {'name': 'x' * 201}, {'name': 'Test', 'id': 1}):
+            result = self.client.post('/api/projects', data=__import__('json').dumps(payload), content_type='application/json')
+            self.assertEqual(result.status_code, 400)
+            self.assertTrue(result.is_json)
+        self.assertEqual(self.client.post('/api/projects', data='{}').status_code, 415)
+        self.assertEqual(self.client.post('/api/projects', data='{', content_type='application/json').status_code, 400)
+        project = self.client.post('/api/projects', json={'name': 'Valid'}).headers['Location']
+        for payload in ({'kind': 'Invalid', 'title': 'X'}, {'kind': 'Risk', 'title': 'X', 'priority': 'Invalid'}):
+            self.assertEqual(self.client.post(project + '/raid', json=payload).status_code, 400)
+        self.assertEqual(self.client.patch(project, json={'name': ''}).status_code, 400)
+        self.assertEqual(self.client.get(project).get_json()['project']['name'], 'Valid')
+        self.assertEqual(self.client.post('/api/projects/999/raid', json={'title': 'X', 'kind': 'Risk'}).status_code, 404)
+
     def test_json_api(self):
         self.assertEqual(self.client.get('/api/projects').get_json(), {'projects': []})
         project = self.create_project('API project')
@@ -198,7 +249,7 @@ class ProjectAppTests(unittest.TestCase):
             response = self.client.get(path)
             self.assertEqual(response.status_code, 404)
             self.assertEqual(response.get_json()['error']['code'], 404)
-        for method in ('post', 'put', 'patch', 'delete'):
+        for method in ('put', 'patch', 'delete'):
             response = getattr(self.client, method)('/api/projects')
             self.assertEqual(response.status_code, 405)
             self.assertEqual(response.get_json()['error']['code'], 405)

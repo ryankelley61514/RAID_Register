@@ -6,7 +6,7 @@ A Flask application for tracking projects with multiple RAID records and changel
 
 The project list supports case-insensitive name/description search and sorting by name or creation order. Each project's RAID register supports search across title, description, owner, type, status, and priority, with sorting by creation order, title, type, owner, status, or priority. Changelog search matches titles and entry text. Filters are stored in URL query parameters; RAID and changelog controls preserve each other's filters. Clear links reset the relevant list. Search treats special characters literally. The JSON API remains unfiltered. Filtering and sorting currently run in memory over the loaded lists, suitable for the app's unpaginated demo; larger datasets should use database-side filtering and pagination.
 
-Routes are organized as Flask Blueprints in `routes/projects.py`, `routes/raid.py`, `routes/changelog.py`, and `routes/api.py` (including Swagger documentation). Shared lookups and form validation live in `routes/helpers.py`; database context helpers live in `database.py`, and RAID options in `constants.py`. `app.py` configures the application, registers the Blueprints, and maintains common CSRF protection, error handling, and CLI setup. Public URLs are unchanged; internal endpoint names use Blueprint prefixes, such as `projects.project_detail` and `api.api_docs`.
+Routes are organized as Flask Blueprints in `routes/projects.py`, `routes/raid.py`, `routes/changelog.py`, and `routes/api.py` (including Swagger documentation). Shared validation, lookups, CRUD operations, and commit/rollback boundaries live in `services.py`. Web and JSON routes both call these services; `routes/helpers.py` only parses form/JSON requests. Service errors are translated centrally into HTML or JSON HTTP errors; database context helpers live in `database.py`, and RAID options in `constants.py`. `app.py` configures the application, registers the Blueprints, and maintains common CSRF protection, error handling, and CLI setup. Public URLs are unchanged; internal endpoint names use Blueprint prefixes, such as `projects.project_detail` and `api.api_docs`.
 
 ```powershell
 python -m venv .venv
@@ -80,7 +80,7 @@ Interactive Swagger UI is available at `/api/docs` (locally, http://127.0.0.1:50
 
 The OpenAPI 3.0 specification is available at `/api/openapi.json` and maintained in `static/openapi.json`. Update it when API fields or routes change. Swagger UI 5.17.14 is bundled in `static/vendor/swagger-ui/`, including its license and notices. Both the assets and specification are served locally; interactive documentation does not require internet access. External specification validation is disabled. Include this vendor directory in offline deployments.
 
-These read-only endpoints use the configured database (SQLite or SQL Server):
+These GET endpoints use the configured database (SQLite or SQL Server):
 
 | GET endpoint | JSON response key |
 | --- | --- |
@@ -100,7 +100,7 @@ Invoke-RestMethod http://127.0.0.1:5000/api/projects
 Invoke-RestMethod http://127.0.0.1:5000/api/projects/1/raid
 ```
 
-The API has no authentication, like the current web interface, and exposes all project data to visitors. Changes continue to use the web forms.
+The API has no authentication, like the current web interface. All visitors can read and modify all project data.
 
 ## Record fields
 
@@ -119,3 +119,24 @@ The app includes form CSRF protection, server-side validation, parameterized dat
 ```
 
 The default run executes unit tests and SQLite integration tests, and skips SQL Server integration tests. To opt in to integration tests, set `$env:RUN_SQLSERVER_TESTS = '1'` before running the command. These tests require database creation privileges on the configured server. Each test creates a uniquely named `raid_test_<uuid>` database, exercises the app, and drops that test database during cleanup. They do not run against your application tables.
+
+
+## JSON API writes
+
+Use `Content-Type: application/json` for POST and PATCH requests.
+
+| Resource | Create (POST) | Edit (PATCH) / delete (DELETE) |
+| --- | --- | --- |
+| Project | `/api/projects` | `/api/projects/<project_id>` |
+| RAID | `/api/projects/<project_id>/raid` | `/api/projects/<project_id>/raid/<item_id>` |
+| Changelog | `/api/projects/<project_id>/changelog` | `/api/projects/<project_id>/changelog/<entry_id>` |
+
+Project creation requires `name`; RAID requires `kind` and `title`; changelog requires `title`. Optional text fields default to empty strings; RAID status defaults to `Open` and priority to `Medium`. PATCH changes only supplied fields. Unknown fields, read-only IDs/timestamps, null values, invalid enums, and empty bodies are rejected. Strings are trimmed and use the same length limits as web forms.
+
+Creates return HTTP 201 with the created object and a `Location` header. Updates return HTTP 200 with the updated object. Deletes return HTTP 204 with no body. Missing or incorrectly scoped records return 404, invalid JSON/fields return 400, and non-JSON writes return 415. Deleting a project also deletes its RAID records and changelog entries. Swagger UI supports trying these operations against the active database; writes affect real records.
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:5000/api/projects -Method Post -ContentType 'application/json' -Body '{"name":"API project"}'
+Invoke-RestMethod http://127.0.0.1:5000/api/projects/1 -Method Patch -ContentType 'application/json' -Body '{"description":"Updated description"}'
+Invoke-RestMethod http://127.0.0.1:5000/api/projects/1 -Method Delete
+```

@@ -1,19 +1,12 @@
-"""Shared route lookups and form validation."""
+"""Transport-specific request parsing; business validation lives in services."""
 from flask import abort, request
 
-from database import db
+
+def form_data():
+    return {key: value for key, value in request.form.items() if key != 'csrf_token'}
 
 
-def project_or_404(project_id):
-    project = db().execute('SELECT * FROM projects WHERE id = ?', (project_id,)).fetchone()
-    if project is None:
-        abort(404)
-    return project
-
-def field(name, required=False, limit=10000):
-    value = request.form.get(name, '').strip()
-    if (required and not value) or len(value) > limit:
-        abort(400, f'{name.replace("_", " ").title()} is required and must be at most {limit} characters.'
-              if required else f'{name.title()} must be at most {limit} characters.')
-    return value
-
+def json_data():
+    if not request.is_json:
+        abort(415, 'Use Content-Type: application/json.')
+    return request.get_json()

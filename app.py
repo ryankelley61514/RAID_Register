@@ -10,7 +10,8 @@ from routes.changelog import bp as changelog_bp
 from routes.api import bp as api_bp
 
 from flask import Flask, abort, render_template, request, session
-from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import HTTPException, BadRequest, NotFound
+from services import ValidationError, RecordNotFound
 
 
 def create_app(test_config=None):
@@ -52,7 +53,7 @@ def create_app(test_config=None):
     @app.before_request
     def csrf_protection():
         if request.path == '/api' or request.path.startswith('/api/'):
-            return  # API routes are read-only and do not use form sessions.
+            return  # API writes require JSON and do not use form sessions.
         if 'csrf_token' not in session:
             session['csrf_token'] = secrets.token_hex(32)
         if request.method == 'POST' and not secrets.compare_digest(
@@ -72,6 +73,14 @@ def create_app(test_config=None):
             response.content_type = 'application/json'
             return response
         return render_template('error.html', error=error), error.code
+
+    @app.errorhandler(ValidationError)
+    def validation_error(error):
+        return error_page(BadRequest(str(error)))
+
+    @app.errorhandler(RecordNotFound)
+    def missing_record(error):
+        return error_page(NotFound(str(error)))
 
     for blueprint in (projects_bp, raid_bp, changelog_bp, api_bp):
         app.register_blueprint(blueprint)

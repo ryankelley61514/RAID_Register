@@ -3,7 +3,7 @@
   "info": {
     "title": "Project Ledger API",
     "version": "1.0.0",
-    "description": "Read-only API for projects, RAID records, and changelog entries. No authentication is required. All visitors can read all records. Collections are unpaginated. Try it out sends requests to this app and its currently configured database."
+    "description": "JSON API for projects, RAID records, and changelog entries. No authentication is required; all visitors can read, create, edit, and delete records. PATCH updates supplied fields only. Project deletion cascades to its children."
   },
   "servers": [
     {
@@ -58,6 +58,64 @@
             "$ref": "#/components/responses/MethodNotAllowed"
           }
         }
+      },
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Create Project",
+        "operationId": "postProject",
+        "parameters": [],
+        "responses": {
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "201": {
+            "description": "Project with all associated RAID records and changelog entries.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "project"
+                  ],
+                  "properties": {
+                    "project": {
+                      "$ref": "#/components/schemas/ProjectDetail"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "description": "URL of the created record.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "415": {
+            "$ref": "#/components/responses/Error415"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectCreate"
+              }
+            }
+          }
+        }
       }
     },
     "/api/projects/{project_id}": {
@@ -104,6 +162,99 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Update Project",
+        "operationId": "patchProject",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the owning project.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "200": {
+            "description": "Project with all associated RAID records and changelog entries.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "project"
+                  ],
+                  "properties": {
+                    "project": {
+                      "$ref": "#/components/schemas/ProjectDetail"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "415": {
+            "$ref": "#/components/responses/Error415"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdate"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Delete Project",
+        "operationId": "deleteProject",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the owning project.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "204": {
+            "description": "Deleted. Empty response body. Project deletion also deletes its RAID and changelog records."
           }
         }
       }
@@ -155,6 +306,76 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "RAID"
+        ],
+        "summary": "Create RaidItem",
+        "operationId": "postRaidItem",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the owning project.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "201": {
+            "description": "Requested record.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "raid_item"
+                  ],
+                  "properties": {
+                    "raid_item": {
+                      "$ref": "#/components/schemas/RaidItem"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "description": "URL of the created record.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "415": {
+            "$ref": "#/components/responses/Error415"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RaidItemCreate"
+              }
+            }
           }
         }
       }
@@ -216,6 +437,121 @@
             "$ref": "#/components/responses/NotFound"
           }
         }
+      },
+      "patch": {
+        "tags": [
+          "RAID"
+        ],
+        "summary": "Update RaidItem",
+        "operationId": "patchRaidItem",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the owning project.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 1
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "description": "ID of a record belonging to the specified project.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "200": {
+            "description": "Requested record.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "raid_item"
+                  ],
+                  "properties": {
+                    "raid_item": {
+                      "$ref": "#/components/schemas/RaidItem"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "415": {
+            "$ref": "#/components/responses/Error415"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RaidItemUpdate"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "RAID"
+        ],
+        "summary": "Delete RaidItem",
+        "operationId": "deleteRaidItem",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the owning project.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 1
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "description": "ID of a record belonging to the specified project.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "204": {
+            "description": "Deleted. Empty response body. Project deletion also deletes its RAID and changelog records."
+          }
+        }
       }
     },
     "/api/projects/{project_id}/changelog": {
@@ -265,6 +601,76 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Changelog"
+        ],
+        "summary": "Create ChangelogEntry",
+        "operationId": "postChangelogEntry",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the owning project.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "201": {
+            "description": "Requested record.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "changelog_entry"
+                  ],
+                  "properties": {
+                    "changelog_entry": {
+                      "$ref": "#/components/schemas/ChangelogEntry"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "description": "URL of the created record.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "415": {
+            "$ref": "#/components/responses/Error415"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangelogEntryCreate"
+              }
+            }
           }
         }
       }
@@ -324,6 +730,121 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Changelog"
+        ],
+        "summary": "Update ChangelogEntry",
+        "operationId": "patchChangelogEntry",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the owning project.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 1
+          },
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "description": "ID of a record belonging to the specified project.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "200": {
+            "description": "Requested record.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "changelog_entry"
+                  ],
+                  "properties": {
+                    "changelog_entry": {
+                      "$ref": "#/components/schemas/ChangelogEntry"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "415": {
+            "$ref": "#/components/responses/Error415"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangelogEntryUpdate"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Changelog"
+        ],
+        "summary": "Delete ChangelogEntry",
+        "operationId": "deleteChangelogEntry",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the owning project.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 1
+          },
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "description": "ID of a record belonging to the specified project.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "204": {
+            "description": "Deleted. Empty response body. Project deletion also deletes its RAID and changelog records."
           }
         }
       }
@@ -532,6 +1053,189 @@
             }
           }
         }
+      },
+      "ProjectCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "Website launch",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "example": "Launch the new website.",
+            "maxLength": 10000
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "ProjectUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "Website launch",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "example": "Launch the new website.",
+            "maxLength": 10000
+          }
+        },
+        "required": []
+      },
+      "RaidItemCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "Risk",
+              "Assumption",
+              "Issue",
+              "Dependency"
+            ],
+            "maxLength": 10000,
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "Vendor delivery delay",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "owner": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Open",
+              "In progress",
+              "Closed"
+            ],
+            "maxLength": 10000
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "Low",
+              "Medium",
+              "High"
+            ],
+            "maxLength": 10000
+          }
+        },
+        "required": [
+          "kind",
+          "title"
+        ]
+      },
+      "RaidItemUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "Risk",
+              "Assumption",
+              "Issue",
+              "Dependency"
+            ],
+            "maxLength": 10000,
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "Vendor delivery delay",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "owner": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Open",
+              "In progress",
+              "Closed"
+            ],
+            "maxLength": 10000
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "Low",
+              "Medium",
+              "High"
+            ],
+            "maxLength": 10000
+          }
+        },
+        "required": []
+      },
+      "ChangelogEntryCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "Kickoff completed",
+            "minLength": 1
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 10000
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "ChangelogEntryUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "example": "Kickoff completed",
+            "minLength": 1
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 10000
+          }
+        },
+        "required": []
       }
     },
     "responses": {
@@ -546,7 +1250,27 @@
         }
       },
       "MethodNotAllowed": {
-        "description": "Only GET, HEAD, and automatic OPTIONS are supported.",
+        "description": "HTTP method is not supported for this URL.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Error400": {
+        "description": "Invalid JSON or field values.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Error415": {
+        "description": "Content-Type must be application/json.",
         "content": {
           "application/json": {
             "schema": {

@@ -1,29 +1,20 @@
-"""Changelog routes."""
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
-
-from database import db
-from routes.helpers import field, project_or_404
+"""Web form routes backed by shared services."""
+from flask import Blueprint, flash, redirect, render_template, request, url_for
+import services
+from routes.helpers import form_data
 
 bp = Blueprint('changelog', __name__)
-
 
 @bp.route('/projects/<int:project_id>/changelog/new', methods=['GET', 'POST'])
 @bp.route('/projects/<int:project_id>/changelog/<int:entry_id>/edit', methods=['GET', 'POST'])
 def changelog_form(project_id, entry_id=None):
-    project = project_or_404(project_id)
-    entry = None
-    if entry_id is not None:
-        entry = db().execute('SELECT * FROM changelog_entries WHERE id=? AND project_id=?', (entry_id, project_id)).fetchone()
-        if entry is None:
-            abort(404)
+    project = services.get_project(project_id)
+    entry = services.get_child(project_id, 'changelog', entry_id) if entry_id is not None else None
     if request.method == 'POST':
-        values = (field('title', True, 200), field('body'))
         if entry is None:
-            db().execute('INSERT INTO changelog_entries(title,body,project_id) VALUES (?,?,?)', values + (project_id,))
+            services.create_child(project_id, 'changelog', form_data())
         else:
-            db().execute('UPDATE changelog_entries SET title=?,body=? WHERE id=? AND project_id=?', values + (entry_id, project_id))
-        db().commit()
+            services.update_child(project_id, 'changelog', entry_id, form_data(), partial=False)
         flash('Changelog entry saved.')
         return redirect(url_for('projects.project_detail', project_id=project_id))
     return render_template('changelog_form.html', project=project, entry=entry)
-

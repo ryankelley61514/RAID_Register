@@ -68,6 +68,22 @@ class Database:
         finally:
             cursor.close()
 
+    def create_child(self, table, values):
+        columns = {
+            'raid_items': ('project_id', 'kind', 'title', 'description', 'owner', 'status', 'priority'),
+            'changelog_entries': ('project_id', 'title', 'body'),
+        }[table]
+        names = ','.join(columns)
+        placeholders = ','.join('?' for _ in columns)
+        parameters = tuple(values[column] for column in columns)
+        if self.backend == 'sqlserver':
+            return self.execute(f'INSERT INTO {table}({names}) OUTPUT INSERTED.id VALUES ({placeholders})', parameters).fetchone()['id']
+        cursor = self.connection.execute(f'INSERT INTO {table}({names}) VALUES ({placeholders})', parameters)
+        try:
+            return cursor.lastrowid
+        finally:
+            cursor.close()
+
     def initialize(self):
         cursor = self.connection.cursor()
         try:
@@ -86,6 +102,9 @@ class Database:
 
     def commit(self):
         self.connection.commit()
+
+    def rollback(self):
+        self.connection.rollback()
 
     def close(self):
         self.connection.close()

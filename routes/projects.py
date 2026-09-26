@@ -1,8 +1,8 @@
 """Projects routes."""
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 
-from database import db
-from routes.helpers import field, project_or_404
+import services
+from routes.helpers import form_data
 
 bp = Blueprint('projects', __name__)
 
@@ -29,12 +29,7 @@ def sort_records(records, selected):
 
 @bp.get('/')
 def index():
-    projects = db().execute('''
-        SELECT p.*,
-            (SELECT COUNT(*) FROM raid_items r WHERE r.project_id=p.id) AS raid_count,
-            (SELECT COUNT(*) FROM changelog_entries c WHERE c.project_id=p.id) AS change_count
-        FROM projects p ORDER BY p.id DESC
-    ''').fetchall()
+    projects = services.list_projects(with_counts=True)
     query = request.args.get('q', '').strip()
     selected = request.args.get('sort', 'newest')
     if selected not in PROJECT_SORTS:
@@ -46,18 +41,16 @@ def index():
 @bp.route('/projects/new', methods=['GET', 'POST'])
 def create_project():
     if request.method == 'POST':
-        project_id = db().create_project(
-                              (field('name', True, 200), field('description')))
-        db().commit()
+        project_id = services.create_project(form_data())['id']
         flash('Project created.')
         return redirect(url_for('projects.project_detail', project_id=project_id))
     return render_template('project_form.html', project=None)
 
 @bp.get('/projects/<int:project_id>')
 def project_detail(project_id):
-    project = project_or_404(project_id)
-    items = db().execute('SELECT * FROM raid_items WHERE project_id=? ORDER BY id DESC', (project_id,)).fetchall()
-    changes = db().execute('SELECT * FROM changelog_entries WHERE project_id=? ORDER BY id DESC', (project_id,)).fetchall()
+    project = services.get_project(project_id)
+    items = services.list_children(project_id, 'raid')
+    changes = services.list_children(project_id, 'changelog')
     raid_query = request.args.get('raid_q', '').strip()
     change_query = request.args.get('change_q', '').strip()
     selected = request.args.get('raid_sort', 'newest')
@@ -72,33 +65,22 @@ def project_detail(project_id):
 
 @bp.route('/projects/<int:project_id>/edit', methods=['GET', 'POST'])
 def edit_project(project_id):
-    project = project_or_404(project_id)
+    project = services.get_project(project_id)
     if request.method == 'POST':
-        db().execute('UPDATE projects SET name=?, description=? WHERE id=?',
-                     (field('name', True, 200), field('description'), project_id))
-        db().commit()
+        services.update_project(project_id, form_data(), partial=False)
         flash('Project updated.')
         return redirect(url_for('projects.project_detail', project_id=project_id))
     return render_template('project_form.html', project=project)
 
 @bp.post('/projects/<int:project_id>/delete')
 def delete_project(project_id):
-    project_or_404(project_id)
-    db().execute('DELETE FROM projects WHERE id=?', (project_id,))
-    db().commit()
+    services.delete_project(project_id)
     flash('Project and its records deleted.')
     return redirect(url_for('projects.index'))
 
 @bp.post('/projects/<int:project_id>/<record_type>/<int:record_id>/delete')
 def delete_record(project_id, record_type, record_id):
-    project_or_404(project_id)
-    tables = {'raid': 'raid_items', 'changelog': 'changelog_entries'}
-    if record_type not in tables:
-        abort(404)
-    cursor = db().execute(f'DELETE FROM {tables[record_type]} WHERE id=? AND project_id=?', (record_id, project_id))
-    if not cursor.rowcount:
-        abort(404)
-    db().commit()
+    services.delete_child(project_id, record_type, record_id)
     flash('Record deleted.')
     return redirect(url_for('projects.project_detail', project_id=project_id))
 

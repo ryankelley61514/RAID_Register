@@ -1,10 +1,10 @@
 """Api routes."""
 from datetime import datetime, timezone
 
-from flask import Blueprint, abort, current_app, jsonify, render_template
+from flask import Blueprint, current_app, jsonify, render_template, request, url_for
 
-from database import db
-from routes.helpers import project_or_404
+import services
+from routes.helpers import json_data
 
 bp = Blueprint('api', __name__)
 
@@ -30,43 +30,82 @@ def api_docs():
 
 @bp.get('/api/projects')
 def api_projects():
-    projects = db().execute('SELECT * FROM projects ORDER BY id DESC').fetchall()
+    projects = services.list_projects()
     return jsonify(projects=[api_record(project) for project in projects])
 
 @bp.get('/api/projects/<int:project_id>')
 def api_project(project_id):
-    project = api_record(project_or_404(project_id))
-    items = db().execute('SELECT * FROM raid_items WHERE project_id=? ORDER BY id DESC', (project_id,)).fetchall()
-    entries = db().execute('SELECT * FROM changelog_entries WHERE project_id=? ORDER BY id DESC', (project_id,)).fetchall()
+    project = api_record(services.get_project(project_id))
+    items = services.list_children(project_id, 'raid')
+    entries = services.list_children(project_id, 'changelog')
     project['raid_items'] = [api_record(item) for item in items]
     project['changelog_entries'] = [api_record(entry) for entry in entries]
     return jsonify(project=project)
 
 @bp.get('/api/projects/<int:project_id>/raid')
 def api_raid_items(project_id):
-    project_or_404(project_id)
-    items = db().execute('SELECT * FROM raid_items WHERE project_id=? ORDER BY id DESC', (project_id,)).fetchall()
+    services.get_project(project_id)
+    items = services.list_children(project_id, 'raid')
     return jsonify(raid_items=[api_record(item) for item in items])
 
 @bp.get('/api/projects/<int:project_id>/raid/<int:item_id>')
 def api_raid_item(project_id, item_id):
-    project_or_404(project_id)
-    item = db().execute('SELECT * FROM raid_items WHERE project_id=? AND id=?', (project_id, item_id)).fetchone()
-    if item is None:
-        abort(404)
+    services.get_project(project_id)
+    item = services.get_child(project_id, 'raid', item_id)
     return jsonify(raid_item=api_record(item))
 
 @bp.get('/api/projects/<int:project_id>/changelog')
 def api_changelog_entries(project_id):
-    project_or_404(project_id)
-    entries = db().execute('SELECT * FROM changelog_entries WHERE project_id=? ORDER BY id DESC', (project_id,)).fetchall()
+    services.get_project(project_id)
+    entries = services.list_children(project_id, 'changelog')
     return jsonify(changelog_entries=[api_record(entry) for entry in entries])
 
 @bp.get('/api/projects/<int:project_id>/changelog/<int:entry_id>')
 def api_changelog_entry(project_id, entry_id):
-    project_or_404(project_id)
-    entry = db().execute('SELECT * FROM changelog_entries WHERE project_id=? AND id=?', (project_id, entry_id)).fetchone()
-    if entry is None:
-        abort(404)
+    services.get_project(project_id)
+    entry = services.get_child(project_id, 'changelog', entry_id)
     return jsonify(changelog_entry=api_record(entry))
 
+
+
+@bp.post('/api/projects')
+def api_create_project():
+    project_id = services.create_project(json_data())['id']
+    return api_project(project_id), 201, {'Location': url_for('api.api_project', project_id=project_id)}
+
+
+@bp.patch('/api/projects/<int:project_id>')
+def api_update_project(project_id):
+    services.update_project(project_id, json_data())
+    return api_project(project_id)
+
+
+@bp.delete('/api/projects/<int:project_id>')
+def api_delete_project(project_id):
+    services.delete_project(project_id)
+    return '', 204
+
+
+CHILD_KEYS = {'raid': 'raid_item', 'changelog': 'changelog_entry'}
+
+
+@bp.post('/api/projects/<int:project_id>/raid', defaults={'kind': 'raid'})
+@bp.post('/api/projects/<int:project_id>/changelog', defaults={'kind': 'changelog'})
+def api_create_child(project_id, kind):
+    key = CHILD_KEYS[kind]
+    record = services.create_child(project_id, kind, json_data())
+    record_id = record['id']
+    endpoint, id_name = ('api.api_raid_item', 'item_id') if kind == 'raid' else ('api.api_changelog_entry', 'entry_id')
+    location = url_for(endpoint, project_id=project_id, **{id_name: record_id})
+    return jsonify({key: api_record(record)}), 201, {'Location': location}
+
+
+@bp.route('/api/projects/<int:project_id>/raid/<int:item_id>', methods=['PATCH', 'DELETE'], defaults={'kind': 'raid'})
+@bp.route('/api/projects/<int:project_id>/changelog/<int:entry_id>', methods=['PATCH', 'DELETE'], defaults={'kind': 'changelog'})
+def api_modify_child(project_id, kind, item_id=None, entry_id=None):
+    record_id = item_id if kind == 'raid' else entry_id
+    if request.method == 'DELETE':
+        services.delete_child(project_id, kind, record_id)
+        return '', 204
+    record = services.update_child(project_id, kind, record_id, json_data())
+    return jsonify({CHILD_KEYS[kind]: api_record(record)})
