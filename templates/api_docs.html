@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Project Ledger API documentation</title>
-  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/swagger-ui/swagger-ui.css') }}">
   <style>body{margin:0;background:#fafafa}nav{padding:20px;font:16px system-ui}nav a{color:#12695e;margin-right:24px}</style>
 </head>
 <body>
   <nav aria-label="Documentation navigation"><a href="{{ url_for('projects.index') }}">← Projects</a><a href="{{ url_for('api.api_spec') }}">OpenAPI JSON</a></nav>
   <div id="swagger-ui"><p style="padding:20px">Loading API documentation… If it does not load, use the OpenAPI JSON link above.</p></div>
   <noscript>Enable JavaScript to use interactive API documentation.</noscript>
-  <script src="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui-bundle.js"></script>
+  <script src="{{ url_for('static', filename='vendor/swagger-ui/swagger-ui-bundle.js') }}"></script>
   <script>
     if (typeof SwaggerUIBundle !== 'undefined') {
       SwaggerUIBundle({
