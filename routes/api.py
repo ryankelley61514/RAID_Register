@@ -35,34 +35,33 @@ def api_projects():
 
 @bp.get('/api/projects/<int:project_id>')
 def api_project(project_id):
-    project = api_record(services.get_project(project_id))
-    items = services.list_children(project_id, 'raid')
-    entries = services.list_children(project_id, 'changelog')
-    project['raid_items'] = [api_record(item) for item in items]
-    project['changelog_entries'] = [api_record(entry) for entry in entries]
+    return project_response(services.get_project_details(project_id))
+
+
+def project_response(details):
+    project = api_record(details)
+    project['raid_items'] = [api_record(item) for item in details['raid_items']]
+    project['changelog_entries'] = [api_record(entry) for entry in details['changelog_entries']]
     return jsonify(project=project)
+
 
 @bp.get('/api/projects/<int:project_id>/raid')
 def api_raid_items(project_id):
-    services.get_project(project_id)
     items = services.list_children(project_id, 'raid')
     return jsonify(raid_items=[api_record(item) for item in items])
 
 @bp.get('/api/projects/<int:project_id>/raid/<int:item_id>')
 def api_raid_item(project_id, item_id):
-    services.get_project(project_id)
     item = services.get_child(project_id, 'raid', item_id)
     return jsonify(raid_item=api_record(item))
 
 @bp.get('/api/projects/<int:project_id>/changelog')
 def api_changelog_entries(project_id):
-    services.get_project(project_id)
     entries = services.list_children(project_id, 'changelog')
     return jsonify(changelog_entries=[api_record(entry) for entry in entries])
 
 @bp.get('/api/projects/<int:project_id>/changelog/<int:entry_id>')
 def api_changelog_entry(project_id, entry_id):
-    services.get_project(project_id)
     entry = services.get_child(project_id, 'changelog', entry_id)
     return jsonify(changelog_entry=api_record(entry))
 
@@ -70,14 +69,14 @@ def api_changelog_entry(project_id, entry_id):
 
 @bp.post('/api/projects')
 def api_create_project():
-    project_id = services.create_project(json_data())['id']
-    return api_project(project_id), 201, {'Location': url_for('api.api_project', project_id=project_id)}
+    project = services.create_project(json_data())
+    return project_response(services.project_details(project)), 201, {'Location': url_for('api.api_project', project_id=project['id'])}
 
 
 @bp.patch('/api/projects/<int:project_id>')
 def api_update_project(project_id):
-    services.update_project(project_id, json_data())
-    return api_project(project_id)
+    project = services.update_project(project_id, json_data())
+    return project_response(services.project_details(project))
 
 
 @bp.delete('/api/projects/<int:project_id>')

@@ -6,9 +6,8 @@ import re
 
 
 class Result:
-    def __init__(self, rows, rowcount):
+    def __init__(self, rows):
         self.rows = rows
-        self.rowcount = rowcount
 
     def fetchone(self):
         return self.rows[0] if self.rows else None
@@ -44,38 +43,29 @@ class Database:
                 sql = re.sub(r'\b(FROM|INTO|UPDATE) (projects|raid_items|changelog_entries)\b',
                              r'\1 dbo.\2', sql)
             cursor.execute(sql, params)
-            count = cursor.rowcount
             rows = []
             if cursor.description:
                 columns = [column[0] for column in cursor.description]
                 rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
-            return Result(rows, count)
+            return Result(rows)
         finally:
             # Fully consume and close results so MARS can remain disabled.
             cursor.close()
 
     def create_project(self, values):
-        if self.backend == 'sqlserver':
-            return self.execute(
-                'INSERT INTO projects(name, description) OUTPUT INSERTED.id VALUES (?, ?)',
-                values,
-            ).fetchone()['id']
-        cursor = self.connection.execute(
-            'INSERT INTO projects(name, description) VALUES (?, ?)', values
-        )
-        try:
-            return cursor.lastrowid
-        finally:
-            cursor.close()
+        return self._insert('projects', ('name', 'description'), values)
 
     def create_child(self, table, values):
         columns = {
             'raid_items': ('project_id', 'kind', 'title', 'description', 'owner', 'status', 'priority'),
             'changelog_entries': ('project_id', 'title', 'body'),
         }[table]
+        return self._insert(table, columns, tuple(values[column] for column in columns))
+
+    def _insert(self, table, columns, parameters):
+        """Insert using internal, allowlisted identifiers and return the generated ID."""
         names = ','.join(columns)
         placeholders = ','.join('?' for _ in columns)
-        parameters = tuple(values[column] for column in columns)
         if self.backend == 'sqlserver':
             return self.execute(f'INSERT INTO {table}({names}) OUTPUT INSERTED.id VALUES ({placeholders})', parameters).fetchone()['id']
         cursor = self.connection.execute(f'INSERT INTO {table}({names}) VALUES ({placeholders})', parameters)

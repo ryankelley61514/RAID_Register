@@ -48,9 +48,9 @@ def create_project():
 
 @bp.get('/projects/<int:project_id>')
 def project_detail(project_id):
-    project = services.get_project(project_id)
-    items = services.list_children(project_id, 'raid')
-    changes = services.list_children(project_id, 'changelog')
+    project = services.get_project_details(project_id)
+    items = project['raid_items']
+    changes = project['changelog_entries']
     raid_query = request.args.get('raid_q', '').strip()
     change_query = request.args.get('change_q', '').strip()
     selected = request.args.get('raid_sort', 'newest')
@@ -65,12 +65,11 @@ def project_detail(project_id):
 
 @bp.route('/projects/<int:project_id>/edit', methods=['GET', 'POST'])
 def edit_project(project_id):
-    project = services.get_project(project_id)
     if request.method == 'POST':
         services.update_project(project_id, form_data(), partial=False)
         flash('Project updated.')
         return redirect(url_for('projects.project_detail', project_id=project_id))
-    return render_template('project_form.html', project=project)
+    return render_template('project_form.html', project=services.get_project(project_id))
 
 @bp.post('/projects/<int:project_id>/delete')
 def delete_project(project_id):

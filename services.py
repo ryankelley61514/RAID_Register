@@ -70,6 +70,16 @@ def get_project(project_id):
     return record
 
 
+def project_details(project):
+    """Expand an already-loaded project without querying the parent again."""
+    return dict(project, raid_items=_list_children(project['id'], 'raid'),
+                changelog_entries=_list_children(project['id'], 'changelog'))
+
+
+def get_project_details(project_id):
+    return project_details(get_project(project_id))
+
+
 def list_projects(with_counts=False):
     if with_counts:
         return db().execute('SELECT p.*, (SELECT COUNT(*) FROM raid_items r WHERE r.project_id=p.id) AS raid_count, (SELECT COUNT(*) FROM changelog_entries c WHERE c.project_id=p.id) AS change_count FROM projects p ORDER BY p.id DESC').fetchall()
@@ -78,12 +88,20 @@ def list_projects(with_counts=False):
 
 def list_children(project_id, kind):
     get_project(project_id)
+    return _list_children(project_id, kind)
+
+
+def _list_children(project_id, kind):
     table, _ = child_definition(kind)
     return db().execute(f'SELECT * FROM {table} WHERE project_id=? ORDER BY id DESC', (project_id,)).fetchall()
 
 
 def get_child(project_id, kind, record_id):
     get_project(project_id)
+    return _get_child(project_id, kind, record_id)
+
+
+def _get_child(project_id, kind, record_id):
     table, _ = child_definition(kind)
     record = db().execute(f'SELECT * FROM {table} WHERE id=? AND project_id=?', (record_id, project_id)).fetchone()
     if record is None:
@@ -122,7 +140,7 @@ def create_child(project_id, kind, data):
         values = validate(data, fields)
         values['project_id'] = project_id
         record_id = connection.create_child(table, values)
-        record = get_child(project_id, kind, record_id)
+        record = _get_child(project_id, kind, record_id)
     return record
 
 
@@ -133,7 +151,7 @@ def update_child(project_id, kind, record_id, data, partial=True):
         values = validate(data, fields, partial)
         assignments = ', '.join(name + '=?' for name in values)
         connection.execute(f'UPDATE {table} SET {assignments} WHERE id=? AND project_id=?', tuple(values.values()) + (record_id, project_id))
-        record = get_child(project_id, kind, record_id)
+        record = _get_child(project_id, kind, record_id)
     return record
 
 
