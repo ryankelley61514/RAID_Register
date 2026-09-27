@@ -164,6 +164,35 @@ class ProjectAppTests(unittest.TestCase):
         self.assertEqual(self.client.get(project).get_json()['project']['name'], 'Valid')
         self.assertEqual(self.client.post('/api/projects/999/raid', json={'title': 'X', 'kind': 'Risk'}).status_code, 404)
 
+    def test_field_registry_addition_and_retirement(self):
+        from field_definitions import FIELDS, field
+        from api_schema import openapi_spec
+        fields = FIELDS['projects']
+        self.addCleanup(fields.pop, 'contact', None)
+        existing = self.create_project('Existing')
+        fields['contact'] = field('Contact', default='', sortable=True)
+        connection = Database(self.app.config)
+        try:
+            plan = connection.migrate()
+            self.assertEqual(len(plan), 1)
+            connection.migrate(apply=True)
+            self.assertEqual(connection.migrate(), [])
+        finally:
+            connection.close()
+        form = self.client.get('/projects/new')
+        self.assertIn(b'name="contact"', form.data)
+        self.assertIn('contact', openapi_spec()['components']['schemas']['Project']['properties'])
+        self.assertEqual(self.client.get('/api' + existing).get_json()['project']['contact'], '')
+        response = self.client.post('/api/projects', json={'name': 'New', 'contact': 'Alex'})
+        self.assertEqual(response.status_code, 201)
+        location = response.headers['Location']
+        self.assertEqual(response.get_json()['project']['contact'], 'Alex')
+        fields.pop('contact')
+        self.assertNotIn('contact', self.client.get(location).get_json()['project'])
+        self.assertNotIn(b'name="contact"', self.client.get('/projects/new').data)
+        self.assertEqual(self.client.post('/api/projects', json={'name': 'After retirement'}).status_code, 201)
+        self.assertEqual(self.client.patch(location, json={'contact': 'Hidden'}).status_code, 400)
+
     def test_json_api(self):
         self.assertEqual(self.client.get('/api/projects').get_json(), {'projects': []})
         project = self.create_project('API project')

@@ -1,10 +1,11 @@
 """Api routes."""
 from datetime import datetime, timezone
 
-from flask import Blueprint, current_app, jsonify, render_template, request, url_for
+from flask import Blueprint, jsonify, render_template, request, url_for
 
 import services
 from routes.helpers import json_data
+from api_schema import openapi_spec
 
 bp = Blueprint('api', __name__)
 
@@ -22,7 +23,7 @@ def api_record(record):
 
 @bp.get('/api/openapi.json')
 def api_spec():
-    return current_app.send_static_file('openapi.json')
+    return jsonify(openapi_spec())
 
 @bp.get('/api/docs')
 def api_docs():

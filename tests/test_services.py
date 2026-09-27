@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch
 
 import services
+from field_definitions import FIELDS
 
 
 class ServiceTests(unittest.TestCase):
@@ -29,10 +30,10 @@ class ServiceTests(unittest.TestCase):
         connection.commit.assert_not_called()
 
     def test_validation_without_http_request(self):
-        values = services.validate({'title': '  Risk  ', 'kind': 'Risk'}, services.RAID_FIELDS)
+        values = services.validate({'title': '  Risk  ', 'kind': 'Risk'}, FIELDS['raid_items'])
         self.assertEqual(values['title'], 'Risk')
         self.assertEqual(values['status'], 'Open')
         self.assertEqual(values['priority'], 'Medium')
         with self.assertRaises(services.ValidationError):
-            services.validate({'name': 'Valid', 'id': 1}, services.PROJECT_FIELDS)
-        self.assertEqual(services.validate({'description': ''}, services.PROJECT_FIELDS, partial=True), {'description': ''})
+            services.validate({'name': 'Valid', 'id': 1}, FIELDS['projects'])
+        self.assertEqual(services.validate({'description': ''}, FIELDS['projects'], partial=True), {'description': ''})

@@ -83,13 +83,12 @@
       regions.forEach((region, index) => region.replaceWith(replacements[index]));
       appliedURL = new URL(url);
       if (historyMode === 'replace') history.replaceState(null, '', url);
-      // Keep hidden fields and clear links accurate for native form fallback.
+      // Keep hidden fields accurate for native form fallback.
       forms.forEach((form, index) => {
         const fresh = page.querySelectorAll('form.list-controls')[index];
         form.querySelectorAll('input[type="hidden"]').forEach(input => {
           input.value = fresh.elements.namedItem(input.name).value;
         });
-        form.querySelector('a').href = fresh.querySelector('a').href;
       });
       status.textContent = '';
     } catch (error) {
@@ -107,14 +106,7 @@
       event.preventDefault();
       update(currentURL());
     });
-    form.querySelector('a').addEventListener('click', event => {
-      if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
-      event.preventDefault();
-      form.querySelectorAll('input[type="search"], select').forEach(control => {
-        control.value = control.tagName === 'SELECT' ? 'newest' : '';
-      });
-      update(currentURL());
-    });
+
   });
   controls.forEach(control => {
     control.addEventListener(control.tagName === 'SELECT' ? 'change' : 'input', () => {

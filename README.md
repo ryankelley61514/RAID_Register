@@ -4,9 +4,9 @@ A Flask application for tracking projects with multiple RAID records and changel
 
 ## Run locally (PowerShell)
 
-The project list supports case-insensitive name/description search and sorting by name or creation order. Each project's RAID register supports search across title, description, owner, type, status, and priority, with sorting by creation order, title, type, owner, status, or priority. Changelog search matches titles and entry text. With JavaScript enabled, search updates after a short typing pause, and sorting and clear controls update results without a page reload. Requests that become outdated are cancelled; failures leave existing results visible with a retry message. Controls retain keyboard focus. Without JavaScript, forms continue to work through regular navigation. Filters are stored in URL query parameters; RAID and changelog controls preserve each other's filters. Clear links reset the relevant list. Search treats special characters literally. The JSON API remains unfiltered. Filtering and sorting currently run in memory over the loaded lists, suitable for the app's unpaginated demo; larger datasets should use database-side filtering and pagination.
+The project list supports case-insensitive name/description search and sorting by name or creation order. Each project's RAID register supports search across title, description, owner, type, status, and priority, with sorting by creation order, title, type, owner, status, or priority. Changelog search matches titles and entry text. With JavaScript enabled, search updates after a short typing pause, and sorting controls update results without a page reload. Requests that become outdated are cancelled; failures leave existing results visible with a retry message. Controls retain keyboard focus. Without JavaScript, forms continue to work through regular navigation. Filters are stored in URL query parameters; RAID and changelog controls preserve each other's filters. Empty the search field to show all records; use the sort dropdown to change ordering. Search treats special characters literally. The JSON API remains unfiltered. Filtering and sorting currently run in memory over the loaded lists, suitable for the app's unpaginated demo; larger datasets should use database-side filtering and pagination.
 
-Routes are organized as Flask Blueprints in `routes/projects.py`, `routes/raid.py`, `routes/changelog.py`, and `routes/api.py` (including Swagger documentation). Shared validation, lookups, CRUD operations, and commit/rollback boundaries live in `services.py`. Web and JSON routes both call these services; `routes/helpers.py` only parses form/JSON requests. Service errors are translated centrally into HTML or JSON HTTP errors; database context helpers live in `database.py`, and RAID options in `constants.py`. `app.py` configures the application, registers the Blueprints, and maintains common CSRF protection, error handling, and CLI setup. Public URLs are unchanged; internal endpoint names use Blueprint prefixes, such as `projects.project_detail` and `api.api_docs`.
+Routes are organized as Flask Blueprints in `routes/projects.py`, `routes/raid.py`, `routes/changelog.py`, and `routes/api.py` (including Swagger documentation). Shared validation, lookups, CRUD operations, and commit/rollback boundaries live in `services.py`. Web and JSON routes both call these services; `routes/helpers.py` only parses form/JSON requests. Service errors are translated centrally into HTML or JSON HTTP errors; database context helpers live in `database.py`, and field definitions and RAID options in `field_definitions.py`. `app.py` configures the application, registers the Blueprints, and maintains common CSRF protection, error handling, and CLI setup. Public URLs are unchanged; internal endpoint names use Blueprint prefixes, such as `projects.project_detail` and `api.api_docs`.
 
 ```powershell
 python -m venv .venv
@@ -78,7 +78,7 @@ A local session secret is generated in `instance/secret.key`; you can override i
 
 Interactive Swagger UI is available at `/api/docs` (locally, http://127.0.0.1:5000/api/docs). Expand an endpoint, click **Try it out**, enter any required IDs, and click **Execute**. Requests use the same host and selected database as the app.
 
-The OpenAPI 3.0 specification is available at `/api/openapi.json` and maintained in `static/openapi.json`. Update it when API fields or routes change. Swagger UI 5.17.14 is bundled in `static/vendor/swagger-ui/`, including its license and notices. Both the assets and specification are served locally; interactive documentation does not require internet access. External specification validation is disabled. Include this vendor directory in offline deployments.
+The OpenAPI 3.0 specification is available at `/api/openapi.json` and generated from `field_definitions.py` and endpoint descriptions in `openapi_base.json`. Field schemas update automatically; edit endpoint descriptions when routes change. Swagger UI 5.17.14 is bundled in `static/vendor/swagger-ui/`, including its license and notices. Both the assets and specification are served locally; interactive documentation does not require internet access. External specification validation is disabled. Include this vendor directory in offline deployments.
 
 These GET endpoints use the configured database (SQLite or SQL Server):
 
@@ -140,3 +140,25 @@ Invoke-RestMethod http://127.0.0.1:5000/api/projects -Method Post -ContentType '
 Invoke-RestMethod http://127.0.0.1:5000/api/projects/1 -Method Patch -ContentType 'application/json' -Body '{"description":"Updated description"}'
 Invoke-RestMethod http://127.0.0.1:5000/api/projects/1 -Method Delete
 ```
+
+
+## Adding and retiring fields
+
+`field_definitions.py` is the source of truth for editable text, multiline text, and select fields. Definitions drive form controls, shared validation, inserts/updates, searchable/sortable fields, record display, API response fields, and OpenAPI schemas. Restart the app after editing definitions.
+
+For example, add this entry under `FIELDS['projects']`:
+
+```python
+'contact': field('Contact', max_length=200, default='', sortable=True),
+```
+
+Preview and apply missing columns to each existing database (select the backend first):
+
+```powershell
+.venv\Scripts\python -m flask --app app migrate-db
+.venv\Scripts\python -m flask --app app migrate-db --apply
+```
+
+For a new database, `init-db` generates tables directly from the definitions. `schema_builder.py` generates SQL for both backends; there are no separate SQL schema snapshots to maintain. Migrations add missing columns and backfill defaults; they never drop data. New required fields must have a valid default when migrating existing records. Back up the database and review the preview before applying.
+
+Removing a definition removes the input, API field, and search/sort option. Stored columns and their data remain. Columns created by this version are nullable to permit retirement; requiredness is enforced in the service layer. Older databases may have required columns with no default: retiring those requires a reviewed migration to allow NULL first, and `migrate-db` reports this condition. Column renames, type changes, and changes to existing database constraints are explicit custom migrations, not automatic operations. Dates, numbers, relationships, and custom widgets need additional implementation; the current registry supports string and select fields.

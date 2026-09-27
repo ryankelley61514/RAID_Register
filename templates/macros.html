@@ -2,3 +2,25 @@
 {% macro delete_button(action, message='Delete this record?') %}
 <form class="inline" method="post" action="{{ action }}" onsubmit="return confirm({{ message|tojson|forceescape }})">{{ csrf() }}<button class="danger" type="submit">Delete</button></form>
 {% endmacro %}
+
+{% macro render_fields(table, record) %}
+{% for name, field in field_definitions[table].items() %}
+{% set value = record.get(name, '') if record else (field.default if field.default is not none else '') %}
+<label for="{{ name }}">{{ field.label }}</label>
+{% if field.form == 'select' %}
+<select id="{{ name }}" name="{{ name }}" {% if field.required %}required{% endif %}>
+{% for choice in field.choices %}<option value="{{ choice }}" {% if choice == value %}selected{% endif %}>{{ choice }}</option>{% endfor %}
+</select>
+{% elif field.form == 'textarea' %}
+<textarea id="{{ name }}" name="{{ name }}" rows="6" maxlength="{{ field.max_length }}" {% if field.required %}required{% endif %}>{{ value }}</textarea>
+{% else %}
+<input id="{{ name }}" name="{{ name }}" type="text" maxlength="{{ field.max_length }}" value="{{ value }}" {% if field.required %}required{% endif %}>
+{% endif %}
+{% endfor %}
+{% endmacro %}
+
+{% macro extra_fields(table, record, excluded) %}
+{% for name, field in field_definitions[table].items() if name not in excluded %}
+<p class="prose"><strong>{{ field.label }}:</strong> {{ record.get(name, '') }}</p>
+{% endfor %}
+{% endmacro %}

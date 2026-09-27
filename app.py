@@ -1,9 +1,10 @@
 import os
 import secrets
+import click
 from pathlib import Path
 
 from database import db, close_db
-from constants import RAID_TYPES, STATUSES, PRIORITIES
+from field_definitions import FIELDS
 from routes.projects import bp as projects_bp
 from routes.raid import bp as raid_bp
 from routes.changelog import bp as changelog_bp
@@ -50,6 +51,18 @@ def create_app(test_config=None):
         db().initialize()
         print(f"{app.config['DATABASE_BACKEND']} schema initialized.")
 
+    @app.cli.command('migrate-db')
+    @click.option('--apply', is_flag=True, help='Apply the displayed additive migrations.')
+    def migrate_db(apply):
+        """Preview missing columns; pass --apply to add them."""
+        try:
+            plan = db().migrate(apply=apply)
+        except ValueError as error:
+            raise click.ClickException(str(error)) from error
+        for statement in plan:
+            click.echo(statement)
+        click.echo(('Applied' if apply else 'Planned') + f' {len(plan)} changes.')
+
     @app.before_request
     def csrf_protection():
         if request.path == '/api' or request.path.startswith('/api/'):
@@ -63,7 +76,7 @@ def create_app(test_config=None):
 
     @app.context_processor
     def template_globals():
-        return dict(raid_types=RAID_TYPES, statuses=STATUSES, priorities=PRIORITIES)
+        return dict(field_definitions=FIELDS)
 
     @app.errorhandler(HTTPException)
     def error_page(error):
