@@ -43,29 +43,29 @@
   font-family: Inter, Segoe UI, Arial, sans-serif;
   color: var(--text);
   background: var(--background);
-  font-size: 15px
+  font-size: 15px;
 }
 
 * {
-  box-sizing: border-box
+  box-sizing: border-box;
 }
 
 body {
-  margin: 0
+  margin: 0;
 }
 
 a {
   color: var(--link);
-  text-decoration: none
+  text-decoration: none;
 }
 
 a:hover {
-  text-decoration: underline
+  text-decoration: underline;
 }
 
 header {
   background: var(--surface);
-  border-bottom: 1px solid var(--border)
+  border-bottom: 1px solid var(--border);
 }
 
 nav {
@@ -75,25 +75,25 @@ nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 28px
+  padding: 0 28px;
 }
 
 nav span,
 .muted,
 small {
-  color: var(--muted)
+  color: var(--muted);
 }
 
 .brand {
   font-weight: 750;
   font-size: 21px;
-  color: var(--brand)
+  color: var(--brand);
 }
 
 main {
   max-width: 1180px;
   margin: 0 auto;
-  padding: 42px 28px 80px
+  padding: 42px 28px 80px;
 }
 
 .heading {
@@ -101,23 +101,23 @@ main {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 24px
+  margin-bottom: 24px;
 }
 
 h1 {
   font-size: 36px;
   letter-spacing: -1px;
-  margin: 8px 0 12px
+  margin: 8px 0 12px;
 }
 
 h2 {
   font-size: 23px;
-  margin: 0 0 10px
+  margin: 0 0 10px;
 }
 
 h3 {
   font-size: 19px;
-  margin: 8px 0 0
+  margin: 8px 0 0;
 }
 
 .eyebrow {
@@ -125,7 +125,7 @@ h3 {
   font-weight: 750;
   letter-spacing: 1.8px;
   color: var(--muted);
-  margin: 0 0 15px
+  margin: 0 0 15px;
 }
 
 .button,
@@ -139,36 +139,36 @@ button {
   font: inherit;
   font-weight: 600;
   cursor: pointer;
-  white-space: nowrap
+  white-space: nowrap;
 }
 
 .button:hover,
 button:hover {
   background: var(--primary-hover);
-  text-decoration: none
+  text-decoration: none;
 }
 
 .secondary {
   background: var(--surface);
   color: var(--text);
-  border-color: var(--border)
+  border-color: var(--border);
 }
 
 .danger {
   background: transparent;
   color: var(--danger);
   border: 0;
-  padding: 8px
+  padding: 8px;
 }
 
 .danger:hover {
-  background: var(--danger-bg)
+  background: var(--danger-bg);
 }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 22px
+  gap: 22px;
 }
 
 .card,
@@ -176,11 +176,11 @@ button:hover {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 26px
+  padding: 26px;
 }
 
 .card h2 a {
-  color: var(--text)
+  color: var(--text);
 }
 
 .preview {
@@ -189,10 +189,11 @@ button:hover {
   overflow-wrap: anywhere;
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   min-height: 60px;
-  line-height: 1.6
+  line-height: 1.6;
 }
 
 .counts {
@@ -201,7 +202,7 @@ button:hover {
   border-top: 1px solid var(--border);
   padding-top: 18px;
   font-size: 13px;
-  color: var(--muted)
+  color: var(--muted);
 }
 
 .empty {
@@ -210,31 +211,31 @@ button:hover {
   border: 1px dashed var(--border);
   padding: 50px 24px;
   border-radius: 12px;
-  color: var(--muted)
+  color: var(--muted);
 }
 
 .empty .button {
-  margin-top: 16px
+  margin-top: 16px;
 }
 
 .back {
   display: inline-block;
   margin-bottom: 25px;
-  font-size: 14px
+  font-size: 14px;
 }
 
 .actions {
   display: flex;
   align-items: center;
-  gap: 14px
+  gap: 14px;
 }
 
 .inline {
-  display: inline
+  display: inline;
 }
 
 section {
-  margin-top: 42px
+  margin-top: 42px;
 }
 
 .badge {
@@ -245,20 +246,20 @@ section {
   padding: 5px 9px;
   font-size: 12px;
   font-weight: 600;
-  vertical-align: middle
+  vertical-align: middle;
 }
 
 .table-wrap {
   overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: var(--surface)
+  background: var(--surface);
 }
 
 table {
   border-collapse: collapse;
   width: 100%;
-  text-align: left
+  text-align: left;
 }
 
 th {
@@ -266,13 +267,13 @@ th {
   text-transform: uppercase;
   letter-spacing: 1px;
   background: var(--table-head);
-  color: var(--muted)
+  color: var(--muted);
 }
 
 th,
 td {
   padding: 18px;
-  border-bottom: 1px solid var(--border)
+  border-bottom: 1px solid var(--border);
 }
 
 td {
@@ -281,7 +282,7 @@ td {
 
 td:nth-child(2) {
   min-width: 220px;
-  max-width: 440px
+  max-width: 440px;
 }
 
 td small {
@@ -290,37 +291,37 @@ td small {
 }
 
 tr:last-child td {
-  border-bottom: 0
+  border-bottom: 0;
 }
 
 .prose {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  line-height: 1.6
+  line-height: 1.6;
 }
 
 .change {
-  margin-bottom: 16px
+  margin-bottom: 16px;
 }
 
 .change .heading {
-  margin-bottom: 10px
+  margin-bottom: 10px;
 }
 
 .form-card {
   max-width: 720px;
-  margin: auto
+  margin: auto;
 }
 
 .form-card h1 {
   font-size: 28px;
-  margin-bottom: 26px
+  margin-bottom: 26px;
 }
 
 label {
   display: block;
   font-weight: 600;
-  margin: 20px 0 8px
+  margin: 20px 0 8px;
 }
 
 input,
@@ -332,28 +333,28 @@ select {
   padding: 12px;
   font: inherit;
   background: var(--surface);
-  color: var(--text)
+  color: var(--text);
 }
 
 textarea {
-  resize: vertical
+  resize: vertical;
 }
 
 input:focus,
 textarea:focus,
 select:focus {
   outline: 2px solid var(--focus);
-  outline-offset: 2px
+  outline-offset: 2px;
 }
 
 form>button {
-  margin-top: 24px
+  margin-top: 24px;
 }
 
 .fields {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px
+  gap: 16px;
 }
 
 .notice {
@@ -361,53 +362,53 @@ form>button {
   background: var(--badge-bg);
   color: var(--badge-text);
   border-radius: 8px;
-  margin-bottom: 24px
+  margin-bottom: 24px;
 }
 
 h1,
 h2,
 h3 {
-  overflow-wrap: anywhere
+  overflow-wrap: anywhere;
 }
 
 @media(max-width:640px) {
   main {
-    padding: 26px 18px
+    padding: 26px 18px;
   }
 
   .heading {
     align-items: flex-start;
     flex-direction: column;
-    gap: 14px
+    gap: 14px;
   }
 
   nav {
-    padding: 0 18px
+    padding: 0 18px;
   }
 
   nav span {
-    display: none
+    display: none;
   }
 
   h1 {
-    font-size: 29px
+    font-size: 29px;
   }
 
   .fields {
     grid-template-columns: 1fr;
-    gap: 0
+    gap: 0;
   }
 
   .actions {
-    flex-wrap: wrap
+    flex-wrap: wrap;
   }
 
   .form-card {
-    padding: 20px
+    padding: 20px;
   }
 
   .grid {
-    grid-template-columns: 1fr
+    grid-template-columns: 1fr;
   }
 }
 

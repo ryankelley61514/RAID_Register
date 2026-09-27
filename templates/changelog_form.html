@@ -1,2 +1,12 @@
-{% extends 'base.html' %}{% from 'macros.html' import csrf, render_fields with context %}
-{% block content %}<a class="back" href="{{ url_for('projects.project_detail', project_id=project.id) }}">← {{ project.name }}</a><div class="form-card"><h1>{{ 'Edit changelog entry' if entry else 'New changelog entry' }}</h1><form method="post">{{ csrf() }}{{ render_fields('changelog_entries', entry) }}<button type="submit">Save entry</button></form></div>{% endblock %}
+{% extends 'base.html' %}
+{% from 'macros.html' import csrf, render_fields with context %}
+{% block content %}
+    <a class="back" href="{{ url_for('projects.project_detail', project_id=project.id) }}">← {{ project.name }}</a>
+    <div class="form-card">
+        <h1>{{ 'Edit changelog entry' if entry else 'New changelog entry' }}</h1>
+        <form method="post">
+            {{ csrf() }}{{ render_fields('changelog_entries', entry) }}
+            <button type="submit">Save entry</button>
+        </form>
+    </div>
+{% endblock %}
